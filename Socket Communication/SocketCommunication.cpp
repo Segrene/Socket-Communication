@@ -32,27 +32,20 @@ int main() {
 
 	char cBuffer[PACKET_SIZE] = {};
 	std::string RecvMsg = "";
+	std::string& RecvString = RecvMsg;
 	std::string cMsg = "";
+	std::string& SendMsg = cMsg;
 
-	recv(hClient, cBuffer, PACKET_SIZE, 0);
-	RecvMsg = cBuffer;
-	memset(cBuffer, 0, sizeof(char) * PACKET_SIZE);
-	std::cout << "RecvMsg : " << RecvMsg << std::endl;
-	RecvMsg = "";
+	RecvMessage(hClient, cBuffer, RecvString);
 
 	while (1) {
-		std::cout << "SendMsg : ";
-		std::cin >> cMsg;
-		send(hClient, cMsg.c_str(), strlen(cMsg.c_str()), 0);
+		SendMessage(hClient, SendMsg);
 		if (cMsg.compare("end") == 0) {
 			break;
 		}
 
 		system("cls");
-		recv(hClient, cBuffer, PACKET_SIZE, 0);
-		RecvMsg = cBuffer;
-		memset(cBuffer, 0, sizeof(char) * PACKET_SIZE);
-		std::cout << RecvMsg;
+		RecvMessage(hClient, cBuffer, RecvString);
 		if (RecvMsg.compare("Ready") == -1) {
 			std::cout << "Task Failure" << std::endl;
 			break;
@@ -61,15 +54,25 @@ int main() {
 		std::cout << std::endl;
 	}
 
-	recv(hClient, cBuffer, PACKET_SIZE, 0);
-	RecvMsg = cBuffer;
-	memset(cBuffer, 0, sizeof(char) * PACKET_SIZE);
-	std::cout << "RecvMsg : " << RecvMsg << std::endl;
-	RecvMsg = "";
+	RecvMessage(hClient, cBuffer, RecvString);
 
 	closesocket(hClient);
 	closesocket(hListen);
 
 	WSACleanup();
 	return 0;
+}
+
+std::string RecvMessage(SOCKET hClient, char* cBuffer, std::string& RecvString) {
+	recv(hClient, cBuffer, PACKET_SIZE, 0);
+	RecvString = cBuffer;
+	memset(cBuffer, 0, sizeof(char) * PACKET_SIZE);
+	std::cout << "RecvMsg : " << RecvString << std::endl;
+	RecvString = "";
+}
+
+int SendMessage(SOCKET hClient, std::string& SendMsg) {
+	std::cout << "SendMsg : ";
+	std::cin >> SendMsg;
+	send(hClient, SendMsg.c_str(), strlen(SendMsg.c_str()), 0);
 }
