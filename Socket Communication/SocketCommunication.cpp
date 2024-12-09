@@ -1,8 +1,11 @@
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+
 #include <stdio.h>
+#include <WinSock2.h>
 #include <Windows.h>
 #include <iostream>
 #include <string>
-#include <WinSock2.h>
+#include "RCoord.h"
 
 #pragma comment(lib, "ws2_32")
 
@@ -11,7 +14,23 @@
 #define PORT 200
 #define PACKET_SIZE 1024
 
+std::string RecvMessage(SOCKET hClient, char* cBuffer, std::string& RecvString);
+int SendMessage(SOCKET hClient, std::string& SendMsg);
+
 int main() {
+	RCOORD Coord1(0,1,2,3,4,5);
+	std::cout << Coord1.getCoord1String();
+	double Tcoord[6] = {9,8,7,6,5,4};
+	Coord1.setCoord2(Tcoord);
+	std::cout << Coord1.getCoord2String();
+	double Acoord1[6] = { 0 };
+	double Acoord2[6] = { 0 };
+	Coord1.getCoord1(Acoord1);
+	Coord1.getCoord2(Acoord2);
+	std::cout << std::to_string(Acoord1[1]) << std::endl;
+	std::cout << std::to_string(Acoord2[1]) << std::endl;
+	return 0;
+
 	WSADATA wsadata;
 	WSAStartup(MAKEWORD(2, 2), &wsadata);
 
@@ -69,10 +88,12 @@ std::string RecvMessage(SOCKET hClient, char* cBuffer, std::string& RecvString) 
 	memset(cBuffer, 0, sizeof(char) * PACKET_SIZE);
 	std::cout << "RecvMsg : " << RecvString << std::endl;
 	RecvString = "";
+	return RecvString;
 }
 
 int SendMessage(SOCKET hClient, std::string& SendMsg) {
 	std::cout << "SendMsg : ";
 	std::cin >> SendMsg;
 	send(hClient, SendMsg.c_str(), strlen(SendMsg.c_str()), 0);
+	return 1;
 }
