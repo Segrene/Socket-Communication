@@ -2,41 +2,40 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <vector>
 #include <array>
 
 using namespace std;
 
 class RCOORD {
 private:
-	array<double, 6> Coord1;
-	array<double, 6> Coord2;
-	double length;
+	int Point = 0;
+	vector<array<double, 6>> Coord = { {0,0,0,0,0,0} };
 public:
-	RCOORD() {
-		Coord1 = { 0,0,0,0,0,0 }; Coord2 = { 0,0,0,0,0,0 }; length = 0;
-	}
-	RCOORD(double x, double y, double z, double rx, double ry, double rz) { Coord1 = { x,y,z,rx,ry,rz }; Coord2 = { x,y,z,rx,ry,rz }; length = 0; }
-	RCOORD(double coord1[], double coord2[]) {
+	RCOORD() {}
+	RCOORD(double x, double y, double z, double rx, double ry, double rz) { Coord[0] = {x,y,z,rx,ry,rz}; }
+	RCOORD(double coord[]) {
 		for (int i = 0; i < 6; i++) {
-			Coord1[i] = coord1[i];
-			Coord2[i] = coord2[i];
+			Coord[0][i] = coord[i];
 		}
-		length = 0;
 	}
 
-	void setCoord1(double x, double y, double z, double rx, double ry, double rz) { Coord1 = { x,y,z,rx,ry,rz }; }
-	void setCoord2(double x, double y, double z, double rx, double ry, double rz) { Coord2 = { x,y,z,rx,ry,rz }; }
-	void setCoord1(double coord[]) { 
+	void setCoord(double x, double y, double z, double rx, double ry, double rz) { Coord[0] = {x,y,z,rx,ry,rz}; }
+	void addCoord(double x, double y, double z, double rx, double ry, double rz) { Coord.push_back({ x,y,z,rx,ry,rz }); Point++; }
+	void setCoord(double coord[]) { 
 		for (int i = 0; i < 6; i++) {
-			Coord1[i] = coord[i];
+			Coord[0][i] = coord[i];
 		}
 	}
-	void setCoord2(double coord[]) {
+	void addCoord(double coord[]) {
+		array<double, 6> addCoord = {0};
 		for (int i = 0; i < 6; i++) {
-			Coord2[i] = coord[i];
+			addCoord[i] = coord[i];
 		}
+		Coord.push_back(addCoord);
+		Point++;
 	}
-	void setCoord1(string coord) {
+	void setCoord(string coord) {
 		istringstream ss(coord);
 		array<string, 6> coordString;
 		int i = 0;
@@ -46,10 +45,11 @@ public:
 			i++;
 		}
 		for (int j = 0; j < 6; j++) {
-			Coord1[j] = stod(coordString[j]);
+			Coord[0][j] = stod(coordString[j]);
 		}
 	}
-	void setCoord2(string coord) {
+	void addCoord(string coord) {
+		array<double, 6> addCoord = { 0 };
 		istringstream ss(coord);
 		array<string, 6> coordString;
 		int i = 0;
@@ -59,37 +59,33 @@ public:
 			i++;
 		}
 		for (int j = 0; j < 6; j++) {
-			Coord2[j] = stod(coordString[j]);
+			addCoord[j] = stod(coordString[j]);
 		}
+		Coord.push_back(addCoord);
+		Point++;
 	}
-	string getCoord1String() {
+	string getCoordString(int point) {
+		if (point > Point) { throw out_of_range("vector 범위 초과"); }
 		std::string coordString;
 		for (int i = 0; i < 5; i++) {
-			coordString += to_string(Coord1[i]);
+			coordString += to_string(Coord[point][i]);
 			coordString += ", ";
 		}
-		coordString += to_string(Coord1[5]);
+		coordString += to_string(Coord[point][5]);
 		coordString += "\n";
 		return coordString;
 	}
-	string getCoord2String() {
-		std::string coordString;
-		for (int i = 0; i < 5; i++) {
-			coordString += to_string(Coord2[i]);
-			coordString += ",";
-		}
-		coordString += to_string(Coord2[5]);
-		coordString += "\n";
-		return coordString;
-	}
-	void getCoord1(double* coord) {
+	void getCoord(int point, double* coord) {
+		if (point > Point) { throw out_of_range("vector 범위 초과"); }
 		for (int i = 0; i < 6; i++) {
-			coord[i] = Coord1[i];
+			coord[i] = Coord[point][i];
 		}
 	}
-	void getCoord2(double* coord) {
-		for (int i = 0; i < 6; i++) {
-			coord[i] = Coord2[i];
-		}
+	int getPoint() {
+		return Point;
+	}
+	void Clear() {
+		Coord.clear();
+		Coord.push_back({0,0,0,0,0,0});
 	}
 };
