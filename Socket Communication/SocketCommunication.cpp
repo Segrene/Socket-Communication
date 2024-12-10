@@ -19,25 +19,26 @@
 
 using namespace std;
 
-int CoordTest();
-int Menu();
-string RecvMessage(SOCKET hClient, char* cBuffer, string& RecvString);
+int CoordTest(); //좌표 클래스 시험용 함수
+int Menu(); //메뉴 함수
+string RecvMessage(SOCKET hClient, char* cBuffer, string& RecvString); //메세지 수신 함수
 string GetString();
 int GetInt();
-int SendMessage(SOCKET hClient, string& SendMsg);
-int NotReady(string& RecvString);
+int SendMessage(SOCKET hClient, string& SendMsg); //메세지 발신 함수
+int NotReady(string& RecvString); //이상 동작 메세지 확인 함수
 int AutoMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg);
 int HoldMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg, long long HoldTime); //HoldTime이 -1인 경우 시간 수동 설정
 void EndTask(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg);
 void MoveBegin(RCOORD& coord, char* cBuffer, string& RecvString, string& SendMsg);
 void MoveEnd(RCOORD& coord, char* cBuffer, string& RecvString, string& SendMsg);
-int getCommand();
+int getCommand(); //실시간 키 입력 확인용 함수
 
 int key;
 
 int main() {
 	//CoordTest();
 
+	//소켓 구성 시작
 	WSADATA wsadata;
 	WSAStartup(MAKEWORD(2, 2), &wsadata);
 
@@ -55,18 +56,20 @@ int main() {
 	SOCKADDR_IN tCIntAddr = {};
 	int iCIntSize = sizeof(tCIntAddr);
 	SOCKET hClient = accept(hListen, (SOCKADDR*)&tCIntAddr, &iCIntSize);
+	//소켓 구성 끝
 
 	char cBuffer[PACKET_SIZE] = {};
 	string RecvMsg = "";
-	string& RecvString = RecvMsg;
+	string& RecvString = RecvMsg; //RecvMsg 레퍼런스
 	string cMsg = "";
-	string& SendMsg = cMsg;
+	string& SendMsg = cMsg; //cMsg 레퍼런스
 	int state = 0; // -1 : 강제종료, 0 : 정상종료, 1 : 특수상황
 
-	RecvMessage(hClient, cBuffer, RecvString);
+	cout << RecvMessage(hClient, cBuffer, RecvString); //연결 상황 확인용
 
 	while (1) {
-		switch (Menu()) {
+		system("cls");
+		switch (Menu()) { //메뉴 선택
 		case 1: {
 			state = AutoMode(hClient, cBuffer, RecvString, SendMsg);
 			continue;
@@ -89,7 +92,7 @@ int main() {
 		break;
 	}
 
-	cout << "RecvMsg : " << RecvMessage(hClient, cBuffer, RecvString);
+	cout << "RecvMsg : " << RecvMessage(hClient, cBuffer, RecvString); //종료 상황 확인
 
 	closesocket(hClient);
 	closesocket(hListen);
@@ -165,7 +168,7 @@ int AutoMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg)
 			}
 		}
 		cout << "\r" << "Loop Count : " << count;
-		if (getCommand() != -1) { //한번의 순회가 끝난 뒤에만 종료 가능
+		if (getCommand() != -1) { //키 입력이 감지될 경우 종료, 한번의 순회가 끝난 뒤에만 종료 가능
 			return 0;
 		}
 	}
@@ -191,7 +194,7 @@ int HoldMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg,
 	return 0;
 }
 void EndTask(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg) {
-	SendMsg = "end";
+	SendMsg = "end"; //로봇에 종료 명령 전달
 	SendMessage(hClient, SendMsg);
 }
 
