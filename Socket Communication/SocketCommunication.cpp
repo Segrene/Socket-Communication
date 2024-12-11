@@ -29,9 +29,9 @@ int NotReady(string& RecvString); //이상 동작 메세지 확인 함수
 int AutoMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg);
 int HoldMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg, long long HoldTime); //HoldTime이 -1인 경우 시간 수동 설정
 void EndTask(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg);
-void MoveBegin(RCOORD& coord, char* cBuffer, string& RecvString, string& SendMsg);
-void MoveEnd(RCOORD& coord, char* cBuffer, string& RecvString, string& SendMsg);
+void Move(RCOORD& coord, char* cBuffer, string& RecvString, string& SendMsg);
 int getCommand(); //실시간 키 입력 확인용 함수
+void GetVisionCoord(double& VisionCoord);
 
 int key;
 
@@ -75,11 +75,11 @@ int main() {
 			continue;
 		}
 		case 2: {
-			state = HoldMode(hClient, cBuffer, RecvString, SendMsg, 0);
+			state = HoldMode(hClient, cBuffer, RecvString, SendMsg, -1);
 			continue;
 		}
 		case 3: {
-			state = HoldMode(hClient, cBuffer, RecvString, SendMsg, -1);
+			state = HoldMode(hClient, cBuffer, RecvString, SendMsg, 0);
 			continue;
 		}
 		case 0: {
@@ -126,7 +126,6 @@ string RecvMessage(SOCKET hClient, char* cBuffer, string& RecvString) {
 	recv(hClient, cBuffer, PACKET_SIZE, 0); //메세지 수신
 	RecvString = cBuffer; //char 에서 string으로
 	memset(cBuffer, 0, sizeof(char) * PACKET_SIZE); //char 버퍼 초기화
-	cout << "RecvMsg : " << RecvString << endl; //받은 메세지 출력
 	return RecvString;
 }
 
@@ -155,7 +154,7 @@ int AutoMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg)
 		if (c.compare("start") == 0) {
 			break;
 		}
-		Coord1.addCoord(GetString()); //좌표 추가
+		Coord1.addCoord(c); //좌표 추가
 	}
 	if (Coord1.getPoint() < 1) { cout << "좌표 부족" << endl; return 0; } //좌표가 1개 이하인 경우 실행 거부
 	while (1) {
@@ -182,7 +181,7 @@ int HoldMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg,
 		cin >> HoldTime;
 	}
 	if (HoldTime < 0) { HoldTime = 0; } //HoldTime이 음수인 경우 0으로 변경
-	SendMsg = Coord1.getCoordString(1);
+	SendMsg = Coord1.getCoordString(0);
 	SendMessage(hClient, SendMsg);
 	RecvMessage(hClient, cBuffer, RecvString); //Ready대기
 	if (NotReady(RecvString)) { return -1; }
@@ -196,13 +195,6 @@ int HoldMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg,
 void EndTask(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg) {
 	SendMsg = "end"; //로봇에 종료 명령 전달
 	SendMessage(hClient, SendMsg);
-}
-
-void MoveBegin(RCOORD& coord, char* cBuffer, string& RecvString, string& SendMsg) { //구상중
-	SendMsg = coord.getCoordString(0);
-}
-void MoveEnd(RCOORD& coord, char* cBuffer, string& RecvString, string& SendMsg) {
-	SendMsg = coord.getCoordString(0);
 }
 
 int getCommand() { //실시간으로 키 입력을 받는 함수
