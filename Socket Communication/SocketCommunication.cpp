@@ -1,15 +1,11 @@
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 
+#include "SocketHeader.h"
+#include "RCoord.h"
 #include <stdio.h>
 #include <conio.h>
-#include <WinSock2.h>
 #include <Windows.h>
-#include <iostream>
-#include <string>
 #include <stdexcept>
-#include <thread>
-#include <vector>
-#include "RCoord.h"
 
 #pragma comment(lib, "ws2_32")
 
