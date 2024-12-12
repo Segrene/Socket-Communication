@@ -20,22 +20,22 @@ public:
 		}
 	}
 
-	void setCoord(double x, double y, double z, double rx, double ry, double rz) { Coord[0] = {x,y,z,rx,ry,rz}; }
-	void addCoord(double x, double y, double z, double rx, double ry, double rz) { Coord.push_back({ x,y,z,rx,ry,rz }); Point++; }
-	void setCoord(double coord[]) { 
+	void setOrigin(double x, double y, double z, double rx, double ry, double rz) { Coord[0] = {x,y,z,rx,ry,rz}; }
+	void addPoint(double x, double y, double z, double rx, double ry, double rz) { Coord.push_back({ x,y,z,rx,ry,rz }); Point++; }
+	void setOrigin(double coord[]) { 
 		for (int i = 0; i < 6; i++) {
 			Coord[0][i] = coord[i];
 		}
 	}
-	void addCoord(double coord[]) {
-		array<double, 6> addCoord = {0};
+	void addPoint(double coord[]) {
+		array<double, 6> addPoint = {0};
 		for (int i = 0; i < 6; i++) {
-			addCoord[i] = coord[i];
+			addPoint[i] = coord[i];
 		}
-		Coord.push_back(addCoord);
+		Coord.push_back(addPoint);
 		Point++;
 	}
-	void setCoord(string coord) {
+	void setOrigin(string coord) {
 		istringstream ss(coord);
 		array<string, 6> coordString;
 		int i = 0;
@@ -48,8 +48,8 @@ public:
 			Coord[0][j] = stod(coordString[j]);
 		}
 	}
-	void addCoord(string coord) {
-		array<double, 6> addCoord = { 0 };
+	void addPoint(string coord) {
+		array<double, 6> addPoint = { 0 };
 		istringstream ss(coord);
 		array<string, 6> coordString;
 		int i = 0;
@@ -59,12 +59,12 @@ public:
 			i++;
 		}
 		for (int j = 0; j < 6; j++) {
-			addCoord[j] = stod(coordString[j]);
+			addPoint[j] = stod(coordString[j]);
 		}
-		Coord.push_back(addCoord);
+		Coord.push_back(addPoint);
 		Point++;
 	}
-	string getCoordString(int point) {
+	string getPointString(int point) {
 		if (point > Point) { throw out_of_range("vector 범위 초과"); }
 		std::string coordString;
 		for (int i = 0; i < 5; i++) {
@@ -75,17 +75,18 @@ public:
 		coordString += "\n";
 		return coordString;
 	}
-	void getCoord(int point, double* coord) {
+	void getPoint(int point, double* coord) {
 		if (point > Point) { throw out_of_range("vector 범위 초과"); }
 		for (int i = 0; i < 6; i++) {
 			coord[i] = Coord[point][i];
 		}
 	}
-	int getPoint() {
+	int getPointCount() {
 		return Point;
 	}
 	void Clear() {
 		Coord.clear();
 		Coord.push_back({0,0,0,0,0,0});
+		Point = 0;
 	}
 };
