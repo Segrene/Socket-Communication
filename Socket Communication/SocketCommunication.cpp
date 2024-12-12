@@ -4,6 +4,7 @@
 #include <conio.h>
 #include <WinSock2.h>
 #include <Windows.h>
+#include <cstdlib>
 #include <iostream>
 #include <string>
 #include <stdexcept>
@@ -66,6 +67,14 @@ int main() {
 	string cMsg = "";
 	string& SendMsg = cMsg; //cMsg 레퍼런스
 	int state = 0; // -1 : 강제종료, 0 : 정상종료, 1 : 특수상황
+	string pythonScript = "grab_clipboard.py";
+	string command = "python " + pythonScript;
+	int result = system(command.c_str());
+	if (result != 0)
+	{
+		cerr << "Python script execution failed with error code: " << result << std::endl;
+		return result;
+	}
 
 	cout << RecvMessage(hClient, cBuffer, RecvString); //연결 상황 확인용
 
