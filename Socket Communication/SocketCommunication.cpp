@@ -8,6 +8,7 @@
 #include <string>
 #include <stdexcept>
 #include <thread>
+#include <vector>
 #include "RCoord.h"
 
 #pragma comment(lib, "ws2_32")
@@ -38,7 +39,10 @@ int main() {
 
 	//家南 备己 矫累
 	WSADATA wsadata;
-	WSAStartup(MAKEWORD(2, 2), &wsadata);
+	if (WSAStartup(MAKEWORD(2, 2), &wsadata) != 0) {
+		std::cout << "WSAStartup failed" << endl;
+		return 1;
+	}
 
 	SOCKET hListen;
 	hListen = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
