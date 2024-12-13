@@ -34,20 +34,11 @@ void EndTask(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg)
 void Move(RCOORD& coord, char* cBuffer, string& RecvString, string& SendMsg);
 int getCommand(); //실시간 키 입력 확인용 함수
 string ZMQGetMessage(zmq::socket_t& zmqsocket);
-void ZMQGetCoord(RCOORD& Coord, zmq::socket_t& zmqsocket);
+void ZMQGetCoord(RCOORD& Coord);
 
 int key;
 
 int main() {
-
-	zmq::context_t context{ 1 };
-	zmq::socket_t zmqsocket(context, ZMQ_REQ);
-	zmqsocket.connect("tcp://localhost:5555");
-	zmq::socket_t& zmqskt = zmqsocket;
-
-	while (true) {
-		ZMQGetMessage(zmqskt);
-	}
 
 	//소켓 구성 시작
 	WSADATA wsadata;
@@ -82,6 +73,10 @@ int main() {
 	cout << RecvMessage(hClient, cBuffer, RecvString); //연결 상황 확인용
 
 	while (1) {
+		if (state == -1) {
+			cout << "이상 실행 감지됨" << endl;
+			break;
+		}
 		system("cls");
 		switch (Menu()) { //메뉴 선택
 		case 1: {
@@ -110,9 +105,6 @@ int main() {
 
 	closesocket(hClient);
 	closesocket(hListen);
-
-	zmqsocket.close();
-	context.close();
 
 	WSACleanup();
 	return 0;
@@ -161,20 +153,10 @@ int SendMessage(SOCKET hClient, string& SendMsg) {
 
 int AutoMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg) {
 	RCOORD Coord1; //좌표 클래스 생성
-	cout << "좌표 1 : ";
-	Coord1.setOrigin(GetString()); //시작 좌표 설정
-	string c;
-	int count = 0;
-	while (1) {
-		cout << "좌표 " << Coord1.getPointCount() + 2 << " : ";
-		c = GetString();
-		if (c.compare("start") == 0) {
-			break;
-		}
-		Coord1.addPoint(c); //좌표 추가
-	}
+	ZMQGetCoord(Coord1); //좌표 자동 입력
 	if (Coord1.getPointCount() < 1) { cout << "좌표 부족" << endl; return 0; } //좌표가 1개 이하인 경우 실행 거부
 	cout << "\r" << "Loop Count : 0";
+	int count = 0;
 	while (1) {
 		for (int i = 0; i <= Coord1.getPointCount(); i++) { //i+1개의 자표를 순회함
 			SendMsg = Coord1.getPointString(i);
@@ -193,7 +175,8 @@ int AutoMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg)
 int HoldMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg, long long HoldTime) {
 	RCOORD Coord1; //좌표 클래스 생성
 	cout << "좌표 : ";
-	Coord1.setOrigin(GetString()); //대기 좌표 설정
+	ZMQGetCoord(Coord1); //대기 좌표 설정
+	cout << Coord1.getPointString(0) << endl;
 	if (HoldTime == -1) { //HoldTime매개변수가 -1인 경우 시간 수동 설정
 		cout << "대기 시간(ms) : ";
 		cin >> HoldTime;
@@ -222,20 +205,28 @@ int getCommand() { //실시간으로 키 입력을 받는 함수
 	return -1;
 }
 
-void ZMQGetCoord(RCOORD& Coord, zmq::socket_t& zmqsocket) {
+void ZMQGetCoord(RCOORD& Coord) {
+	zmq::context_t context{ 1 };
+	zmq::socket_t zmqsocket(context, ZMQ_REQ);
+	zmqsocket.connect("tcp://localhost:5555");
+	zmq::socket_t& zmqskt = zmqsocket;
 	Coord.Clear();
 	string RawCoord = ZMQGetMessage(zmqsocket);
 	stringstream ss(RawCoord);
 	vector<string> Points;
 	string Point;
+	int scount = 0;
 	// 스트림을 한 줄씩 읽어, 공백 단위로 분리한 뒤, 결과 배열에 저장
 	while (getline(ss, Point, ' ')) {
 		Points.push_back(Point);
+		cout << "좌표 " << ++scount << " : " << Point << endl;
 	}
 	Coord.setOrigin(Points[0]);
-	for (int i = 1; i <= Points.size(); i++) {
+	for (int i = 1; i < Points.size(); i++) {
 		Coord.addPoint(Points[i]);
 	}
+	zmqsocket.close();
+	context.close();
 }
 
 string ZMQGetMessage(zmq::socket_t& zmqsocket) {
