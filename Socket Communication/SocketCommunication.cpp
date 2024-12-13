@@ -1,5 +1,6 @@
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 
+#include <zmq.hpp>
 #include <stdio.h>
 #include <conio.h>
 #include <WinSock2.h>
@@ -32,11 +33,20 @@ int HoldMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg,
 void EndTask(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg);
 void Move(RCOORD& coord, char* cBuffer, string& RecvString, string& SendMsg);
 int getCommand(); //실시간 키 입력 확인용 함수
-void GetVisionPoint(double& VisionCoord);
+string GetVisionPoint(zmq::socket_t& zmqsocket);
 
 int key;
 
 int main() {
+
+	zmq::context_t context{ 1 };
+	zmq::socket_t zmqsocket(context, ZMQ_REQ);
+	zmqsocket.connect("tcp://localhost:5555");
+	zmq::socket_t& zmqskt = zmqsocket;
+
+	while (true) {
+		GetVisionPoint(zmqskt);
+	}
 
 	//소켓 구성 시작
 	WSADATA wsadata;
@@ -67,14 +77,6 @@ int main() {
 	string cMsg = "";
 	string& SendMsg = cMsg; //cMsg 레퍼런스
 	int state = 0; // -1 : 강제종료, 0 : 정상종료, 1 : 특수상황
-	string pythonScript = "grab_clipboard.py";
-	string command = "python " + pythonScript;
-	int result = system(command.c_str());
-	if (result != 0)
-	{
-		cerr << "Python script execution failed with error code: " << result << std::endl;
-		return result;
-	}
 
 	cout << RecvMessage(hClient, cBuffer, RecvString); //연결 상황 확인용
 
@@ -214,4 +216,18 @@ int getCommand() { //실시간으로 키 입력을 받는 함수
 		return _getch();
 	}
 	return -1;
+}
+
+string GetVisionPoint(zmq::socket_t& zmqsocket) {
+
+	cout << "RequestPoint " << endl;
+	zmqsocket.send(zmq::buffer("Send Point Data"), zmq::send_flags::none);
+
+	//  Get the reply.
+	zmq::message_t reply;
+	zmqsocket.recv(reply, zmq::recv_flags::none);
+	string Received = reply.to_string();
+	std::cout << "Received : " << Received << endl;
+
+	return Received;
 }
