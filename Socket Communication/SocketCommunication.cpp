@@ -33,7 +33,8 @@ int HoldMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg,
 void EndTask(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg);
 void Move(RCOORD& coord, char* cBuffer, string& RecvString, string& SendMsg);
 int getCommand(); //실시간 키 입력 확인용 함수
-string GetVisionPoint(zmq::socket_t& zmqsocket);
+string ZMQGetMessage(zmq::socket_t& zmqsocket);
+void ZMQGetCoord(RCOORD& Coord, zmq::socket_t& zmqsocket);
 
 int key;
 
@@ -45,7 +46,7 @@ int main() {
 	zmq::socket_t& zmqskt = zmqsocket;
 
 	while (true) {
-		GetVisionPoint(zmqskt);
+		ZMQGetMessage(zmqskt);
 	}
 
 	//소켓 구성 시작
@@ -109,6 +110,9 @@ int main() {
 
 	closesocket(hClient);
 	closesocket(hListen);
+
+	zmqsocket.close();
+	context.close();
 
 	WSACleanup();
 	return 0;
@@ -218,7 +222,23 @@ int getCommand() { //실시간으로 키 입력을 받는 함수
 	return -1;
 }
 
-string GetVisionPoint(zmq::socket_t& zmqsocket) {
+void ZMQGetCoord(RCOORD& Coord, zmq::socket_t& zmqsocket) {
+	Coord.Clear();
+	string RawCoord = ZMQGetMessage(zmqsocket);
+	stringstream ss(RawCoord);
+	vector<string> Points;
+	string Point;
+	// 스트림을 한 줄씩 읽어, 공백 단위로 분리한 뒤, 결과 배열에 저장
+	while (getline(ss, Point, ' ')) {
+		Points.push_back(Point);
+	}
+	Coord.setOrigin(Points[0]);
+	for (int i = 1; i <= Points.size(); i++) {
+		Coord.addPoint(Points[i]);
+	}
+}
+
+string ZMQGetMessage(zmq::socket_t& zmqsocket) {
 
 	cout << "RequestPoint " << endl;
 	zmqsocket.send(zmq::buffer("Send Point Data"), zmq::send_flags::none);
