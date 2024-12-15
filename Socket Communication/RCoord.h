@@ -64,9 +64,28 @@ public:
 		Coord.push_back(addPoint);
 		Point++;
 	}
+	void setOrigin(array<double, 6> coord) {
+		Coord[0] = coord;
+	}
+	void addPoint(array<double, 6> coord) {
+		Coord.push_back(coord);
+	}
+	void editPoint(int pointNum, int coordNum, double coord) {
+		if (pointNum > Point) { throw out_of_range("vector 범위 초과"); }
+		Coord[pointNum][coordNum] = coord;
+	}
+	void makeLifting() {
+		if (Point < 1) { cout << "No available point" << endl; }
+		array<double, 6> lift1 = Coord[Point];
+		array<double, 6> lift2 = Coord[0];
+		lift1[2] += 20;
+		lift2[2] += 20;
+		this->addPoint(lift1);
+		this->addPoint(lift2);
+	}
 	string getPointString(int point) {
 		if (point > Point) { throw out_of_range("vector 범위 초과"); }
-		std::string coordString;
+		string coordString;
 		for (int i = 0; i < 5; i++) {
 			coordString += to_string(Coord[point][i]);
 			coordString += ", ";

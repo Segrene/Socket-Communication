@@ -155,6 +155,12 @@ int AutoMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg)
 	RCOORD Coord1; //좌표 클래스 생성
 	ZMQGetCoord(Coord1); //좌표 자동 입력
 	if (Coord1.getPointCount() < 1) { cout << "좌표 부족" << endl; return 0; } //좌표가 1개 이하인 경우 실행 거부
+	string sl;
+	cout << "들어올리기(y/n) : ";
+	cin >> sl;
+	if (sl.compare("y") == 0 || sl.compare("Y") == 0) {
+		Coord1.makeLifting();
+	}
 	cout << "\r" << "Loop Count : 0";
 	int count = 0;
 	while (1) {
