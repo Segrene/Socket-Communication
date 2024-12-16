@@ -266,7 +266,7 @@ void ZMQGetCoord(RCOORD& Coord) {
 	zmqsocket.connect("tcp://localhost:5555");
 	zmq::socket_t& zmqskt = zmqsocket;
 	Coord.Clear();
-	string RawCoord = ZMQGetMessage(zmqsocket);
+	string RawCoord = ZMQGetMessage(zmqskt);
 	stringstream ss(RawCoord);
 	vector<string> Points;
 	string Point;
