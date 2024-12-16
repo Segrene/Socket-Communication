@@ -1,10 +1,9 @@
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 
 #include <zmq.hpp>
-#include <stdio.h>
 #include <conio.h>
 #include <WinSock2.h>
-#include <Windows.h>
+#include "SerialClass.h"
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -28,17 +27,23 @@ string GetString();
 int GetInt();
 int SendMessage(SOCKET hClient, string& SendMsg); //메세지 발신 함수
 int NotReady(string& RecvString); //이상 동작 메세지 확인 함수
-int AutoMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg);
-int HoldMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg, long long HoldTime); //HoldTime이 -1인 경우 시간 수동 설정
+int AutoMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg, int inputMode);
+int HoldMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg, long long HoldTime, int inputMode); //HoldTime이 -1인 경우 시간 수동 설정
 void EndTask(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg);
 void Move(RCOORD& coord, char* cBuffer, string& RecvString, string& SendMsg);
 int getCommand(); //실시간 키 입력 확인용 함수
 string ZMQGetMessage(zmq::socket_t& zmqsocket);
 void ZMQGetCoord(RCOORD& Coord);
+void ManualGetCoord(RCOORD& Coord);
 
 int key;
 
 int main() {
+	//시리얼 구성 시작
+	//Serial* SP = new Serial("\\\\.\\com3");
+	//if (SP->IsConnected()) {
+	//	cout << "엔드 이펙터 연결됨" << endl;
+	//}
 
 	//소켓 구성 시작
 	WSADATA wsadata;
@@ -69,8 +74,11 @@ int main() {
 	string cMsg = "";
 	string& SendMsg = cMsg; //cMsg 레퍼런스
 	int state = 0; // -1 : 강제종료, 0 : 정상종료, 1 : 특수상황
+	int inputMode = 0; // 0 : 자동, 1 : 수동
 
-	cout << RecvMessage(hClient, cBuffer, RecvString); //연결 상황 확인용
+	cout << "M0609 : " << RecvMessage(hClient, cBuffer, RecvString); //연결 상황 확인용
+
+	Sleep(1000);
 
 	while (1) {
 		if (state == -1) {
@@ -78,17 +86,30 @@ int main() {
 			break;
 		}
 		system("cls");
+		cout << "좌표 입력 모드 : ";
+		switch (inputMode) {
+		case 0: cout << "자동" << endl; break;
+		case 1: cout << "수동" << endl; break;
+		}
 		switch (Menu()) { //메뉴 선택
 		case 1: {
-			state = AutoMode(hClient, cBuffer, RecvString, SendMsg);
+			state = AutoMode(hClient, cBuffer, RecvString, SendMsg, inputMode);
 			continue;
 		}
 		case 2: {
-			state = HoldMode(hClient, cBuffer, RecvString, SendMsg, -1);
+			state = HoldMode(hClient, cBuffer, RecvString, SendMsg, -1, inputMode);
 			continue;
 		}
 		case 3: {
-			state = HoldMode(hClient, cBuffer, RecvString, SendMsg, 0);
+			state = HoldMode(hClient, cBuffer, RecvString, SendMsg, 0, inputMode);
+			continue;
+		}
+		case 4: {
+			cout << "좌표 입력 모드(0:자동, 1:수동) : ";
+			cin >> inputMode;
+			if (inputMode != 0 && inputMode != 1) {
+				inputMode = 1;
+			}
 			continue;
 		}
 		case 0: {
@@ -112,7 +133,7 @@ int main() {
 
 int Menu() {
 	cout << "동작 선택" << endl;
-	cout << "1. Auto" << endl << "2. Hold" << endl << "3. Shot" << endl << "0. End" << endl << "Select : ";
+	cout << "1. 자동 모드" << endl << "2. 대기 모드" << endl << "3. 찍기 모드" << endl << "4. 좌표 입력 모드 변경" << endl << "0. 종료" << endl << "Select : ";
 	return GetInt();
 }
 
@@ -151,9 +172,13 @@ int SendMessage(SOCKET hClient, string& SendMsg) {
 	return 1;
 }
 
-int AutoMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg) {
+int AutoMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg, int inputMode) {
 	RCOORD Coord1; //좌표 클래스 생성
-	ZMQGetCoord(Coord1); //좌표 자동 입력
+	switch (inputMode) { //좌표 입력 모드 선택
+	case 0: ZMQGetCoord(Coord1); break; //서버에서 자동 입력
+	case 1: ManualGetCoord(Coord1); break; //사용자 입력
+	default: ManualGetCoord(Coord1); break;
+	}
 	if (Coord1.getPointCount() < 1) { cout << "좌표 부족" << endl; return 0; } //좌표가 1개 이하인 경우 실행 거부
 	string sl;
 	cout << "들어올리기(y/n) : ";
@@ -178,10 +203,14 @@ int AutoMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg)
 		}
 	}
 }
-int HoldMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg, long long HoldTime) {
+int HoldMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg, long long HoldTime, int inputMode) {
 	RCOORD Coord1; //좌표 클래스 생성
 	cout << "좌표 : ";
-	ZMQGetCoord(Coord1); //대기 좌표 설정
+	switch (inputMode) { //좌표 입력 모드 선택
+	case 0: ZMQGetCoord(Coord1); break; //서버에서 자동 입력
+	case 1: ManualGetCoord(Coord1); break; //사용자 입력
+	default: ManualGetCoord(Coord1); break;
+	}
 	cout << Coord1.getPointString(0) << endl;
 	if (HoldTime == -1) { //HoldTime매개변수가 -1인 경우 시간 수동 설정
 		cout << "대기 시간(ms) : ";
@@ -209,6 +238,26 @@ int getCommand() { //실시간으로 키 입력을 받는 함수
 		return _getch();
 	}
 	return -1;
+}
+
+void ManualGetCoord(RCOORD& Coord) {
+	cout << "좌표 수동 입력" << endl;
+	Coord.Clear();
+	string point;
+	cout << "좌표 1 : ";
+	cin >> point;
+	Coord.setOrigin(point);
+	int count = 2;
+	while (true) {
+		cout << "좌표 " << count << " : ";
+		cin >> point;
+		if (point.compare("start") == 0) {
+			cout << "좌표 입력 종료" << endl;
+			break;
+		}
+		Coord.addPoint(point);
+		count++;
+	}
 }
 
 void ZMQGetCoord(RCOORD& Coord) {

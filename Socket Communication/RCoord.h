@@ -78,10 +78,11 @@ public:
 		if (Point < 1) { cout << "No available point" << endl; }
 		array<double, 6> lift1 = Coord[Point];
 		array<double, 6> lift2 = Coord[0];
-		lift1[2] += 20;
-		lift2[2] += 20;
+		lift1[2] += 30;
+		lift2[2] += 30;
 		this->addPoint(lift1);
 		this->addPoint(lift2);
+		Point += 2;
 	}
 	string getPointString(int point) {
 		if (point > Point) { throw out_of_range("vector 범위 초과"); }

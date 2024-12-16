@@ -20,10 +20,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RCoordTest.cpp" />
+    <ClCompile Include="Serial.cpp" />
     <ClCompile Include="SocketCommunication.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RCoord.h" />
+    <ClInclude Include="SerialClass.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
