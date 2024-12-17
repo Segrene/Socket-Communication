@@ -27,7 +27,7 @@ string GetString();
 int GetInt();
 int SendMessage(SOCKET hClient, string& SendMsg); //메세지 발신 함수
 int NotReady(string& RecvString); //이상 동작 메세지 확인 함수
-int AutoMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg, int inputMode);
+int AutoMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg, int LoopCount, int inputMode);
 int HoldMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg, long long HoldTime, int inputMode, string rOrigin); //HoldTime이 -1인 경우 시간 수동 설정
 void EndTask(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg);
 int MoveToTools(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg);
@@ -110,7 +110,7 @@ int main() {
 		}
 		switch (Menu()) { //메뉴 선택
 		case 1: {
-			state = AutoMode(hClient, cBuffer, RecvString, SendMsg, inputMode);
+			state = AutoMode(hClient, cBuffer, RecvString, SendMsg, inputMode, 0);
 			continue;
 		}
 		case 2: {
@@ -189,7 +189,7 @@ int SendMessage(SOCKET hClient, string& SendMsg) {
 	return 1;
 }
 
-int AutoMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg, int inputMode) {
+int AutoMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg, int LoopCount, int inputMode) {
 	RCOORD Coord1; //좌표 클래스 생성
 	switch (inputMode) { //좌표 입력 모드 선택
 	case 0: ZMQGetCoord(Coord1); break; //서버에서 자동 입력
@@ -197,6 +197,14 @@ int AutoMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg,
 	default: ManualGetCoord(Coord1, 0); break;
 	}
 	if (Coord1.getPointCount() < 1) { cout << "좌표 부족" << endl; return 0; } //좌표가 1개 이하인 경우 실행 거부
+	int loop = 1;
+	if (LoopCount == 0) {
+		cout << "루프 횟수 (-1 : 무한) : ";
+		cin >> loop;
+	}
+	else {
+		loop = LoopCount;
+	}
 	string sl;
 	cout << "들어올리기(y/n) : ";
 	cin >> sl;
@@ -205,20 +213,24 @@ int AutoMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg,
 	}
 	cout << "\r" << "Loop Count : 0";
 	int count = 0;
-	while (1) {
-		for (int i = 0; i <= Coord1.getPointCount(); i++) { //i+1개의 자표를 순회함
-			SendMsg = Coord1.getPointString(i);
-			SendMessage(hClient, SendMsg); //좌표 i 전송
-			RecvMessage(hClient, cBuffer, RecvString); //Ready대기
-			if (NotReady(RecvString)) {
-				return -1; //Ready가 아닌 경우 강제 종료
+	if (LoopCount < 0) {
+		while (1) {
+			for (int i = 0; i <= Coord1.getPointCount(); i++) { //i+1개의 자표를 순회함
+				Move(hClient, cBuffer, RecvString, SendMsg, Coord1.getPointString(i));
+			}
+			cout << "\r" << "Loop Count : " << ++count;
+			if (getCommand() != -1) { //키 입력이 감지될 경우 종료, 한번의 순회가 끝난 뒤에만 종료 가능
+				return 0;
 			}
 		}
-		cout << "\r" << "Loop Count : " << ++count;
-		if (getCommand() != -1) { //키 입력이 감지될 경우 종료, 한번의 순회가 끝난 뒤에만 종료 가능
-			return 0;
-		}
 	}
+	for (; count < loop; count++) {
+		for (int i = 0; i <= Coord1.getPointCount(); i++) { //i+1개의 자표를 순회함
+			Move(hClient, cBuffer, RecvString, SendMsg, Coord1.getPointString(i));
+		}
+		cout << "\r" << "Loop Count : " << count;
+	}
+	return 0;
 }
 int HoldMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg, long long HoldTime, int inputMode, string rOrigin) {
 	RCOORD Coord1; //좌표 클래스 생성
@@ -234,15 +246,9 @@ int HoldMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg,
 		cin >> HoldTime;
 	}
 	if (HoldTime < 0) { HoldTime = 0; } //HoldTime이 음수인 경우 0으로 변경
-	SendMsg = Coord1.getPointString(0);
-	SendMessage(hClient, SendMsg);
-	RecvMessage(hClient, cBuffer, RecvString); //Ready대기
-	if (NotReady(RecvString)) { return -1; }
+	Move(hClient, cBuffer, RecvString, SendMsg, Coord1.getPointString(0));
 	Sleep(HoldTime);
-	SendMsg = rOrigin;
-	SendMessage(hClient, SendMsg);
-	RecvMessage(hClient, cBuffer, RecvString); //Ready대기
-	if (NotReady(RecvString)) { return -1; }
+	Move(hClient, cBuffer, RecvString, SendMsg, rOrigin);
 	return 0;
 }
 void EndTask(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg) {
@@ -283,13 +289,8 @@ void GrabTools(Serial SP, int dataLength, SOCKET hClient, char* cBuffer, string&
 	MoveToTools(hClient, cBuffer, RecvString, SendMsg);
 	SP.WriteData("Release", dataLength);
 }
-int MoveToTools(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg) {
-	SendMsg = "0,0,0,0,0,0";
-	SendMessage(hClient, SendMsg); //좌표 i 전송
-	RecvMessage(hClient, cBuffer, RecvString); //Ready대기
-	if (NotReady(RecvString)) {
-		return -1; //Ready가 아닌 경우 강제 종료
-	}
+int MoveToTools(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg, string rOrigin) {
+	Move(hClient, cBuffer, RecvString, SendMsg, rOrigin);
 }
 
 void ZMQGetCoord(RCOORD& Coord) {
@@ -328,4 +329,11 @@ string ZMQGetMessage(zmq::socket_t& zmqsocket) {
 	std::cout << "Received : " << Received << endl;
 
 	return Received;
+}
+
+int Move(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg, string point) {
+	SendMsg = point; //입력된 좌표로 메세지 설정
+	SendMessage(hClient, SendMsg); //메세지 전달
+	RecvMessage(hClient, cBuffer, RecvString); //Ready대기
+	if (NotReady(RecvString)) { return -1; }
 }
