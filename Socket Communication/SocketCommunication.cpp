@@ -28,22 +28,26 @@ int GetInt();
 int SendMessage(SOCKET hClient, string& SendMsg); //메세지 발신 함수
 int NotReady(string& RecvString); //이상 동작 메세지 확인 함수
 int AutoMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg, int inputMode);
-int HoldMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg, long long HoldTime, int inputMode); //HoldTime이 -1인 경우 시간 수동 설정
+int HoldMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg, long long HoldTime, int inputMode, string rOrigin); //HoldTime이 -1인 경우 시간 수동 설정
 void EndTask(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg);
-void Move(RCOORD& coord, char* cBuffer, string& RecvString, string& SendMsg);
+int MoveToTools(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg);
 int getCommand(); //실시간 키 입력 확인용 함수
 string ZMQGetMessage(zmq::socket_t& zmqsocket);
 void ZMQGetCoord(RCOORD& Coord);
-void ManualGetCoord(RCOORD& Coord);
+void ManualGetCoord(RCOORD& Coord, int mode); // mode0 : 다중 좌표, mode1 : 단일 좌표
+void GrabTools(Serial SP, int dataLength, SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg);
 
 int key;
 
 int main() {
 	//시리얼 구성 시작
-	//Serial* SP = new Serial("\\\\.\\com3");
-	//if (SP->IsConnected()) {
-	//	cout << "엔드 이펙터 연결됨" << endl;
-	//}
+	/*Serial* SP = new Serial("\\\\.\\com3");
+	if (SP->IsConnected()) {
+		cout << "엔드 이펙터 연결됨" << endl;
+	}
+	char incomingData[256] = "";
+	int dataLength = 255;
+	int readResult = 0;*/
 
 	//소켓 구성 시작
 	WSADATA wsadata;
@@ -75,8 +79,19 @@ int main() {
 	string& SendMsg = cMsg; //cMsg 레퍼런스
 	int state = 0; // -1 : 강제종료, 0 : 정상종료, 1 : 특수상황
 	int inputMode = 0; // 0 : 자동, 1 : 수동
+	string RobotMode = "";
+	string RobotOrigin = "";
 
 	cout << "M0609 : " << RecvMessage(hClient, cBuffer, RecvString); //연결 상황 확인용
+	RobotMode = RecvMessage(hClient, cBuffer, RecvString);
+	if (RobotMode.compare("BaseABS\r\n") == 0) {
+		RobotOrigin = "367,6,278,0,180,0";
+	}
+	else if (RobotMode.compare("BaseTrans\r\n") == 0) {
+		RobotOrigin = "0,0,0,0,0,0";
+	}
+	cout << "RobotMode : " << RobotMode;
+	cout << "RobotOrigin : " << RobotOrigin;
 
 	Sleep(1000);
 
@@ -86,6 +101,8 @@ int main() {
 			break;
 		}
 		system("cls");
+		cout << "작동 모드 : " << RobotMode;
+		cout << "로봇 원점 : " << RobotOrigin << endl;
 		cout << "좌표 입력 모드 : ";
 		switch (inputMode) {
 		case 0: cout << "자동" << endl; break;
@@ -97,11 +114,11 @@ int main() {
 			continue;
 		}
 		case 2: {
-			state = HoldMode(hClient, cBuffer, RecvString, SendMsg, -1, inputMode);
+			state = HoldMode(hClient, cBuffer, RecvString, SendMsg, -1, inputMode, RobotOrigin);
 			continue;
 		}
 		case 3: {
-			state = HoldMode(hClient, cBuffer, RecvString, SendMsg, 0, inputMode);
+			state = HoldMode(hClient, cBuffer, RecvString, SendMsg, 0, inputMode, RobotOrigin);
 			continue;
 		}
 		case 4: {
@@ -176,8 +193,8 @@ int AutoMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg,
 	RCOORD Coord1; //좌표 클래스 생성
 	switch (inputMode) { //좌표 입력 모드 선택
 	case 0: ZMQGetCoord(Coord1); break; //서버에서 자동 입력
-	case 1: ManualGetCoord(Coord1); break; //사용자 입력
-	default: ManualGetCoord(Coord1); break;
+	case 1: ManualGetCoord(Coord1, 0); break; //사용자 입력
+	default: ManualGetCoord(Coord1, 0); break;
 	}
 	if (Coord1.getPointCount() < 1) { cout << "좌표 부족" << endl; return 0; } //좌표가 1개 이하인 경우 실행 거부
 	string sl;
@@ -203,13 +220,13 @@ int AutoMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg,
 		}
 	}
 }
-int HoldMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg, long long HoldTime, int inputMode) {
+int HoldMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg, long long HoldTime, int inputMode, string rOrigin) {
 	RCOORD Coord1; //좌표 클래스 생성
 	cout << "좌표 : ";
 	switch (inputMode) { //좌표 입력 모드 선택
 	case 0: ZMQGetCoord(Coord1); break; //서버에서 자동 입력
-	case 1: ManualGetCoord(Coord1); break; //사용자 입력
-	default: ManualGetCoord(Coord1); break;
+	case 1: ManualGetCoord(Coord1, 1); break; //사용자 입력
+	default: ManualGetCoord(Coord1, 1); break;
 	}
 	cout << Coord1.getPointString(0) << endl;
 	if (HoldTime == -1) { //HoldTime매개변수가 -1인 경우 시간 수동 설정
@@ -222,7 +239,7 @@ int HoldMode(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg,
 	RecvMessage(hClient, cBuffer, RecvString); //Ready대기
 	if (NotReady(RecvString)) { return -1; }
 	Sleep(HoldTime);
-	SendMsg = "0, 0, 0, 0, 0, 0";
+	SendMsg = rOrigin;
 	SendMessage(hClient, SendMsg);
 	RecvMessage(hClient, cBuffer, RecvString); //Ready대기
 	if (NotReady(RecvString)) { return -1; }
@@ -240,23 +257,38 @@ int getCommand() { //실시간으로 키 입력을 받는 함수
 	return -1;
 }
 
-void ManualGetCoord(RCOORD& Coord) {
+void ManualGetCoord(RCOORD& Coord, int mode) {
 	cout << "좌표 수동 입력" << endl;
 	Coord.Clear();
 	string point;
 	cout << "좌표 1 : ";
 	cin >> point;
 	Coord.setOrigin(point);
-	int count = 2;
-	while (true) {
-		cout << "좌표 " << count << " : ";
-		cin >> point;
-		if (point.compare("start") == 0) {
-			cout << "좌표 입력 종료" << endl;
-			break;
+	if (mode == 0) {
+		int count = 2;
+		while (true) {
+			cout << "좌표 " << count << " : ";
+			cin >> point;
+			if (point.compare("start") == 0) {
+				cout << "좌표 입력 종료" << endl;
+				break;
+			}
+			Coord.addPoint(point);
+			count++;
 		}
-		Coord.addPoint(point);
-		count++;
+	}
+}
+
+void GrabTools(Serial SP, int dataLength, SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg) {
+	MoveToTools(hClient, cBuffer, RecvString, SendMsg);
+	SP.WriteData("Release", dataLength);
+}
+int MoveToTools(SOCKET hClient, char* cBuffer, string& RecvString, string& SendMsg) {
+	SendMsg = "0,0,0,0,0,0";
+	SendMessage(hClient, SendMsg); //좌표 i 전송
+	RecvMessage(hClient, cBuffer, RecvString); //Ready대기
+	if (NotReady(RecvString)) {
+		return -1; //Ready가 아닌 경우 강제 종료
 	}
 }
 
